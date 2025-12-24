@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from sqlalchemy.engine import URL
 
-from .base import LinkedMSDialect, LinkedServerConfig
+from .base import LinkedMSDialect, LinkedServerConfig, _parse_pk_overrides
 
 
 class LinkedMSDialect_pyodbc(LinkedMSDialect):
     driver = "pyodbc"
+    supports_statement_cache = True
 
     def create_connect_args(self, url: URL):
         # Pull our custom options from query params so they don't get passed into
@@ -16,11 +17,14 @@ class LinkedMSDialect_pyodbc(LinkedMSDialect):
         linked_server = q.pop("linked_server", None)
         database = q.pop("database", None)
         schema = q.pop("schema", None)
+        pk_overrides = q.pop("pk_overrides", None)
 
         if linked_server and database and self._linked_cfg is None:
             self._linked_cfg = LinkedServerConfig(
                 str(linked_server), str(database), str(schema) if schema else None
             )
+        if pk_overrides:
+            self._pk_overrides.update(_parse_pk_overrides(pk_overrides))
 
         # Rebuild URL with remaining query params.
         url = url.set(query=q)

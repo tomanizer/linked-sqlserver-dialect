@@ -49,7 +49,7 @@ dialect gets registered.
 Or via `connect_args`:
 
 ```python
-engine = create_engine(
+engine = create_engine(/.
     "linked_mssql+pyodbc://user:pass@host/db?driver=ODBC+Driver+17+for+SQL+Server",
     connect_args={"linked_server": "MyLinkedServer", "database": "RemoteDb", "schema": "dbo"},
 )
@@ -63,6 +63,25 @@ This first release is intentionally minimal (KISS/YAGNI):
 - Columns: `get_columns()`
 - Views: `get_view_names()`
 - No PK/FK/index reflection yet
+
+## Primary keys (missing PKs)
+
+Many linked-server scenarios expose tables/views without primary key metadata.
+SQLAlchemy can still reflect them, but ORM mapping typically needs a primary key.
+
+You can provide **primary key overrides** in a few ways:
+
+- **URL query param (string format)**:
+  - `pk_overrides=dbo.example_table=id;dbo.other=col1,col2`
+
+- **`connect_args` (dict or string)**:
+  - `connect_args={"pk_overrides": {"dbo.example_table": ["id"]}}`
+  - `connect_args={"pk_overrides": "dbo.example_table=id;dbo.other=col1,col2"}`
+
+- **Advanced (runtime mutation)**: if you already created an engine and want to inject
+  overrides programmatically:
+
+  - `engine.dialect._pk_overrides[("dbo", "example_table")] = ["id"]`
 
 ## Smoke test
 

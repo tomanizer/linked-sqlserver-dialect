@@ -118,17 +118,55 @@ def test_get_view_names_filters_schema():
     assert conn.calls == [(sql, {"schema": "dbo"})]
 
 
+def test_get_pk_constraint_from_information_schema():
+    from tests.conftest import FakeConnection
+
+    d = LinkedMSDialect(linked_server="LS", database="DB", schema="dbo")
+    sql = (
+        "SELECT kcu.COLUMN_NAME, tc.CONSTRAINT_NAME "
+        "FROM [LS].[DB].[INFORMATION_SCHEMA].[TABLE_CONSTRAINTS] tc "
+        "JOIN [LS].[DB].[INFORMATION_SCHEMA].[KEY_COLUMN_USAGE] kcu "
+        "  ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME "
+        " AND tc.TABLE_SCHEMA = kcu.TABLE_SCHEMA "
+        " AND tc.TABLE_NAME = kcu.TABLE_NAME "
+        "WHERE tc.CONSTRAINT_TYPE = 'PRIMARY KEY' "
+        "  AND tc.TABLE_NAME = :table_name AND tc.TABLE_SCHEMA = :schema ORDER BY kcu.ORDINAL_POSITION"
+    )
+    conn = FakeConnection(rows_by_sql={sql: [("id", "PK_users"), ("tenant_id", "PK_users")]})
+
+    pk = d.get_pk_constraint(conn, "users")
+    assert pk["constrained_columns"] == ["id", "tenant_id"]
+    assert pk["name"] == "PK_users"
+    assert conn.calls == [(sql, {"table_name": "users", "schema": "dbo"})]
+
+
+def test_get_pk_constraint_override():
+    from tests.conftest import FakeConnection
+
+    d = LinkedMSDialect(
+        linked_server="LS",
+        database="DB",
+        schema="dbo",
+        pk_overrides="dbo.example_table=id",
+    )
+    conn = FakeConnection()
+    pk = d.get_pk_constraint(conn, "example_table")
+    assert pk["constrained_columns"] == ["id"]
+    assert pk["name"] is None
+
+
 def test_create_connect_args_pulls_custom_params():
     from sqlalchemy.engine import make_url
 
     d = LinkedMSDialect_pyodbc()
     url = make_url(
-        "linked_mssql+pyodbc://user:pass@host/db?linked_server=LS&database=DB&schema=dbo&driver=ODBC+Driver+17+for+SQL+Server"
+        "linked_mssql+pyodbc://user:pass@host/db?linked_server=LS&database=DB&schema=dbo&pk_overrides=dbo.users%3Did&driver=ODBC+Driver+17+for+SQL+Server"
     )
     d.create_connect_args(url)
     cfg = d._require_cfg()  # noqa: SLF001
     assert cfg.linked_server == "LS"
     assert cfg.database == "DB"
     assert cfg.default_schema == "dbo"
+    assert d._pk_overrides.get(("dbo", "users")) == ["id"]
 
 
