@@ -64,6 +64,25 @@ This first release is intentionally minimal (KISS/YAGNI):
 - Views: `get_view_names()`
 - No PK/FK/index reflection yet
 
+## Primary keys (missing PKs)
+
+Many linked-server scenarios expose tables/views without primary key metadata.
+SQLAlchemy can still reflect them, but ORM mapping typically needs a primary key.
+
+You can provide **primary key overrides** in a few ways:
+
+- **URL query param (string format)**:
+  - `pk_overrides=dbo.example_table=id;dbo.other=col1,col2`
+
+- **`connect_args` (dict or string)**:
+  - `connect_args={"pk_overrides": {"dbo.example_table": ["id"]}}`
+  - `connect_args={"pk_overrides": "dbo.example_table=id;dbo.other=col1,col2"}`
+
+- **Advanced (runtime mutation)**: if you already created an engine and want to inject
+  overrides programmatically:
+
+  - `engine.dialect._pk_overrides[("dbo", "example_table")] = ["id"]`
+
 ## Smoke test
 
 Run a real end-to-end check against your environment:
