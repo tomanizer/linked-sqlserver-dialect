@@ -2,6 +2,14 @@
 linked_sqlserver_dialect
 
 Minimal SQLAlchemy dialect for SQL Server linked servers.
+
+This package registers the dialect under the SQLAlchemy dialect name:
+
+- linked_mssql+pyodbc  (entrypoint key: linked_mssql.pyodbc)
+
+The dialect is intended for environments where reflection must be performed via
+4-part linked-server queries against INFORMATION_SCHEMA, instead of using SQL
+Server stored procedures.
 """
 
 from sqlalchemy.dialects import registry

@@ -34,7 +34,15 @@ class LinkedMSDialect(MSDialect_pyodbc):
     Minimal dialect that reflects tables/columns via INFORMATION_SCHEMA on a
     SQL Server linked server.
 
-    Supports:
+    This dialect only customizes reflection; normal SQL compilation/execution is
+    inherited from SQLAlchemy's MSSQL+pyodbc dialect.
+
+    Required configuration (provided via URL query params or connect_args):
+    - linked_server: the linked server name (first part)
+    - database: the remote database/catalog name (second part)
+    - schema: optional default schema for reflection (filters TABLE_SCHEMA)
+
+    Implemented reflection methods:
     - get_table_names()
     - get_columns()
     """

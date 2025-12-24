@@ -16,12 +16,17 @@ SQLAlchemy dialect for **SQL Server linked servers** where reflection must use
 pip install linked-sqlserver-dialect
 ```
 
+For local development from a git checkout:
+
+```bash
+pip install -e .
+```
+
 ## Usage
 
 Provide linked server metadata via URL query parameters:
 
 ```python
-import linked_sqlserver_dialect  # registers the dialect for local dev
 from sqlalchemy import create_engine, inspect
 
 engine = create_engine(
@@ -36,6 +41,10 @@ insp = inspect(engine)
 print(insp.get_table_names())        # uses INFORMATION_SCHEMA.TABLES
 print(insp.get_columns("MyTable"))   # uses INFORMATION_SCHEMA.COLUMNS
 ```
+
+Note: if you're running from a source checkout *without* installing the package,
+add `import linked_sqlserver_dialect` once before `create_engine(...)` so the
+dialect gets registered.
 
 Or via `connect_args`:
 
@@ -59,8 +68,6 @@ This first release is intentionally minimal (KISS/YAGNI):
 Run a real end-to-end check against your environment:
 
 ```bash
-# Recommended for local development so SQLAlchemy can discover the entrypoint:
-#   pip install -e .
 export LINKED_MSSQL_URL='linked_mssql+pyodbc://user:pass@host/db?driver=ODBC+Driver+17+for+SQL+Server&linked_server=MyLinkedServer&database=RemoteDb&schema=dbo'
 python scripts/smoke_test.py --table MyTable
 ```
@@ -83,6 +90,15 @@ docker compose up -d --build
 
 ### Run a real reflection check against the sandbox
 
+From your host (uses published port `14331`):
+
+```bash
+export LINKED_MSSQL_URL='linked_mssql+pyodbc://sa:YourStrong(!)Password1@localhost:14331/master?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes&linked_server=LS_REMOTE&database=RemoteDb&schema=dbo'
+python scripts/smoke_test.py --table example_table
+```
+
+From inside the devcontainer (service DNS name `sql1`):
+
 ```bash
 export LINKED_MSSQL_URL='linked_mssql+pyodbc://sa:YourStrong(!)Password1@sql1/master?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes&linked_server=LS_REMOTE&database=RemoteDb&schema=dbo'
 python scripts/smoke_test.py --table example_table
@@ -90,6 +106,10 @@ python scripts/smoke_test.py --table example_table
 
 ### Notes / troubleshooting
 
+- If using **ODBC Driver 18**, encryption is enabled by default; `TrustServerCertificate=yes` is the simplest local-dev setting.
+- On macOS, you can install the Microsoft driver via Homebrew tap:
+  - `brew tap microsoft/mssql-release`
+  - `brew install microsoft/mssql-release/msodbcsql18 microsoft/mssql-release/mssql-tools18`
 - Linked server provider support in SQL Server Linux images can vary. If `init` fails while running `sp_addlinkedserver`, check the `init` container logs and we can adjust the provider/options.
 - Passwords are hard-coded for local dev only. Change them before sharing this setup.
 
