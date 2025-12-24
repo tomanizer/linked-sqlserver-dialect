@@ -18,7 +18,7 @@ from .base import LinkedMSDialect
 from .pyodbc import LinkedMSDialect_pyodbc
 
 # Keep in sync with pyproject.toml version for now (KISS).
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 # Allow runtime registration without requiring entrypoints (useful for tests/dev).
 registry.register(
