@@ -5,7 +5,7 @@ SQLAlchemy dialect for **SQL Server linked servers** where reflection must use
 
 ## Requirements
 
-- Python >= 3.12
+- Python >= 3.11
 - SQLAlchemy >= 2.0
 - `pyodbc`
 - **Microsoft ODBC Driver 17+ for SQL Server**
