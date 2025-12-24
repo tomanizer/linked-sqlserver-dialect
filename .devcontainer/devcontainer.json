@@ -1,0 +1,14 @@
+{
+  "name": "linked-sqlserver-dialect (local linked-server dev)",
+  "dockerComposeFile": ["../docker-compose.yml"],
+  "service": "dev",
+  "workspaceFolder": "/workspaces/linked-sqlserver-dialect",
+  "shutdownAction": "stopCompose",
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python", "ms-python.vscode-pylance"]
+    }
+  }
+}
+
+

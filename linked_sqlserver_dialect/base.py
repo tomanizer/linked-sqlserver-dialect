@@ -40,6 +40,7 @@ class LinkedMSDialect(MSDialect_pyodbc):
     """
 
     name = "linked_mssql"
+    supports_statement_cache = True
 
     def __init__(
         self,

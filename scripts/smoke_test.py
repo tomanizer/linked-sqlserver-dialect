@@ -4,6 +4,10 @@ import argparse
 import os
 import sys
 
+# Ensure the dialect is registered for local runs (works even without an
+# installed distribution/entrypoints).
+import linked_sqlserver_dialect  # noqa: F401
+
 from sqlalchemy import create_engine, inspect
 
 
