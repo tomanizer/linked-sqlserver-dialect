@@ -61,7 +61,8 @@ This first release is intentionally minimal (KISS/YAGNI):
 
 - Tables: `get_table_names()`
 - Columns: `get_columns()`
-- No PK/FK/index/view reflection yet
+- Views: `get_view_names()`
+- No PK/FK/index reflection yet
 
 ## Smoke test
 

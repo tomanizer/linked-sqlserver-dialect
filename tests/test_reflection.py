@@ -104,6 +104,20 @@ def test_get_columns_filters_schema_and_maps_types():
     assert conn.calls == [(sql, {"table_name": "users", "schema": "dbo"})]
 
 
+def test_get_view_names_filters_schema():
+    from tests.conftest import FakeConnection
+
+    d = LinkedMSDialect(linked_server="LS", database="DB", schema="dbo")
+    sql = (
+        "SELECT TABLE_NAME FROM [LS].[DB].[INFORMATION_SCHEMA].[VIEWS] "
+        "WHERE 1=1 AND TABLE_SCHEMA = :schema ORDER BY TABLE_NAME"
+    )
+    conn = FakeConnection(rows_by_sql={sql: [("v1",), ("v2",)]})
+
+    assert d.get_view_names(conn) == ["v1", "v2"]
+    assert conn.calls == [(sql, {"schema": "dbo"})]
+
+
 def test_create_connect_args_pulls_custom_params():
     from sqlalchemy.engine import make_url
 

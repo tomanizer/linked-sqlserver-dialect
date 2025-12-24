@@ -16,6 +16,12 @@ BEGIN
 END
 GO
 
+IF OBJECT_ID(N'dbo.example_view', N'V') IS NULL
+BEGIN
+  EXEC(N'CREATE VIEW dbo.example_view AS SELECT id, name FROM dbo.example_table;');
+END
+GO
+
 IF NOT EXISTS (SELECT 1 FROM sys.sql_logins WHERE name = 'readonly_user')
 BEGIN
   CREATE LOGIN [readonly_user] WITH PASSWORD = 'ReadOnly(!)Pass123';

@@ -45,6 +45,8 @@ class LinkedMSDialect(MSDialect_pyodbc):
     Implemented reflection methods:
     - get_table_names()
     - get_columns()
+    - get_view_names()
+    - get_view_definition() (best-effort; may return None if permissions prevent it)
     """
 
     name = "linked_mssql"
@@ -115,6 +117,58 @@ class LinkedMSDialect(MSDialect_pyodbc):
 
         rows = connection.execute(text(stmt), params).all()
         return [r[0] for r in rows]
+
+    def get_view_names(
+        self, connection: Connection, schema: str | None = None, **kw: Any
+    ) -> list[str]:
+        cfg = self._require_cfg()
+        eff_schema = self._effective_schema(schema)
+
+        from_obj = _info_schema_4part(cfg, "VIEWS")
+        stmt = f"SELECT TABLE_NAME FROM {from_obj} WHERE 1=1"
+        params: dict[str, Any] = {}
+        if eff_schema is not None:
+            stmt += " AND TABLE_SCHEMA = :schema"
+            params["schema"] = eff_schema
+        stmt += " ORDER BY TABLE_NAME"
+
+        rows = connection.execute(text(stmt), params).all()
+        return [r[0] for r in rows]
+
+    def get_view_definition(
+        self,
+        connection: Connection,
+        view_name: str,
+        schema: str | None = None,
+        **kw: Any,
+    ) -> str | None:
+        """
+        Best-effort view definition lookup via INFORMATION_SCHEMA.VIEWS.
+
+        On SQL Server this may return NULL or raise if the user lacks VIEW
+        DEFINITION permissions on the remote objects.
+        """
+        cfg = self._require_cfg()
+        eff_schema = self._effective_schema(schema)
+
+        from_obj = _info_schema_4part(cfg, "VIEWS")
+        stmt = (
+            f"SELECT VIEW_DEFINITION "
+            f"FROM {from_obj} "
+            f"WHERE TABLE_NAME = :view_name"
+        )
+        params: dict[str, Any] = {"view_name": view_name}
+        if eff_schema is not None:
+            stmt += " AND TABLE_SCHEMA = :schema"
+            params["schema"] = eff_schema
+
+        try:
+            row = connection.execute(text(stmt), params).first()
+        except Exception:
+            return None
+        if not row:
+            return None
+        return row[0]
 
     def get_columns(
         self,
