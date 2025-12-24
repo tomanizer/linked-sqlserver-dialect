@@ -57,6 +57,11 @@ def main() -> int:
     for name in tables[: args.limit]:
         print(f"- {name}")
 
+    views = insp.get_view_names()
+    print(f"\nviews: {len(views)}")
+    for name in views[: args.limit]:
+        print(f"- {name}")
+
     if args.table:
         cols = insp.get_columns(args.table)
         print(f"\ncolumns for {args.table!r}: {len(cols)}")
