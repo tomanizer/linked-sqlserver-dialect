@@ -1,0 +1,45 @@
+[project]
+name = "linked-sqlserver-dialect"
+version = "0.1.0"
+description = "SQLAlchemy dialect for SQL Server linked servers (reflection via INFORMATION_SCHEMA)"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [
+  { name = "Thomas" },
+]
+keywords = ["sqlalchemy", "sqlserver", "mssql", "linked-server", "pyodbc", "dialect"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Database",
+]
+dependencies = [
+  "sqlalchemy>=2.0",
+  "pyodbc",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+]
+
+[project.entry-points."sqlalchemy.dialects"]
+"linked_mssql.pyodbc" = "linked_sqlserver_dialect.pyodbc:LinkedMSDialect_pyodbc"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["linked_sqlserver_dialect*"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+
+
