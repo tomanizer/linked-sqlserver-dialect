@@ -16,6 +16,60 @@ class LinkedServerConfig:
     default_schema: str | None = None
 
 
+def _parse_pk_overrides(value: Any) -> dict[tuple[str | None, str], list[str]]:
+    """
+    Parse primary key overrides.
+
+    Supported inputs:
+    - dict: { "schema.table": ["col1", "col2"], "table": ["id"] }
+    - str:  "schema.table=col1,col2;table=id"
+
+    Returns a dict keyed by (schema, table) where schema may be None.
+    """
+    if value is None:
+        return {}
+
+    if isinstance(value, dict):
+        items = value.items()
+    elif isinstance(value, str):
+        items = []
+        for part in (p.strip() for p in value.split(";")):
+            if not part:
+                continue
+            if "=" not in part:
+                raise ValueError(
+                    "pk_overrides must be 'schema.table=col1,col2;table=id' or a dict"
+                )
+            k, v = part.split("=", 1)
+            items.append((k.strip(), [c.strip() for c in v.split(",") if c.strip()]))
+    else:
+        raise TypeError("pk_overrides must be a dict or str")
+
+    out: dict[tuple[str | None, str], list[str]] = {}
+    for raw_key, raw_cols in items:
+        if not raw_key:
+            continue
+        if isinstance(raw_cols, str):
+            cols = [c.strip() for c in raw_cols.split(",") if c.strip()]
+        else:
+            cols = [str(c).strip() for c in raw_cols if str(c).strip()]
+        if not cols:
+            continue
+
+        if "." in raw_key:
+            schema, table = raw_key.split(".", 1)
+            schema = schema.strip() or None
+            table = table.strip()
+        else:
+            schema = None
+            table = raw_key.strip()
+
+        if not table:
+            continue
+        out[(schema.lower() if schema else None, table.lower())] = cols
+    return out
+
+
 def _bracket(ident: str) -> str:
     # Keep it extremely simple; for safety, reject weird inputs rather than
     # attempting to escape and accidentally allowing injection.
@@ -41,12 +95,14 @@ class LinkedMSDialect(MSDialect_pyodbc):
     - linked_server: the linked server name (first part)
     - database: the remote database/catalog name (second part)
     - schema: optional default schema for reflection (filters TABLE_SCHEMA)
+    - pk_overrides: optional primary key overrides for tables/views that don't expose PKs
 
     Implemented reflection methods:
     - get_table_names()
     - get_columns()
     - get_view_names()
     - get_view_definition() (best-effort; may return None if permissions prevent it)
+    - get_pk_constraint() (best-effort + optional overrides)
     """
 
     name = "linked_mssql"
@@ -58,6 +114,7 @@ class LinkedMSDialect(MSDialect_pyodbc):
         linked_server: str | None = None,
         database: str | None = None,
         schema: str | None = None,
+        pk_overrides: Any = None,
         **kwargs: Any,
     ):
         super().__init__(*args, **kwargs)
@@ -66,16 +123,22 @@ class LinkedMSDialect(MSDialect_pyodbc):
             if linked_server and database
             else None
         )
+        self._pk_overrides: dict[tuple[str | None, str], list[str]] = _parse_pk_overrides(
+            pk_overrides
+        )
 
     def _set_cfg_from_connect_params(self, cparams: dict[str, Any]) -> None:
         # Allow passing via create_engine(..., connect_args={...}).
         linked_server = cparams.pop("linked_server", None)
         database = cparams.pop("database", None)
         schema = cparams.pop("schema", None)
+        pk_overrides = cparams.pop("pk_overrides", None)
         if linked_server and database and self._linked_cfg is None:
             self._linked_cfg = LinkedServerConfig(
                 str(linked_server), str(database), str(schema) if schema else None
             )
+        if pk_overrides:
+            self._pk_overrides.update(_parse_pk_overrides(pk_overrides))
 
     def connect(self, *cargs: Any, **cparams: Any):
         # Called for new DB-API connections; intercept our custom args so pyodbc
@@ -169,6 +232,64 @@ class LinkedMSDialect(MSDialect_pyodbc):
         if not row:
             return None
         return row[0]
+
+    def get_pk_constraint(
+        self,
+        connection: Connection,
+        table_name: str,
+        schema: str | None = None,
+        **kw: Any,
+    ) -> dict[str, Any]:
+        """
+        Return primary key constraint information.
+
+        Best-effort:
+        - If INFORMATION_SCHEMA constraints are accessible, use them.
+        - Otherwise, return an empty PK unless pk_overrides provides one.
+        """
+        eff_schema = self._effective_schema(schema)
+
+        # 1) Overrides
+        if eff_schema is not None:
+            cols = self._pk_overrides.get((eff_schema.lower(), table_name.lower()))
+            if cols:
+                return {"constrained_columns": cols, "name": None}
+        cols = self._pk_overrides.get((None, table_name.lower()))
+        if cols:
+            return {"constrained_columns": cols, "name": None}
+
+        # 2) INFORMATION_SCHEMA
+        cfg = self._require_cfg()
+        tc = _info_schema_4part(cfg, "TABLE_CONSTRAINTS")
+        kcu = _info_schema_4part(cfg, "KEY_COLUMN_USAGE")
+
+        stmt = (
+            f"SELECT kcu.COLUMN_NAME, tc.CONSTRAINT_NAME "
+            f"FROM {tc} tc "
+            f"JOIN {kcu} kcu "
+            f"  ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME "
+            f" AND tc.TABLE_SCHEMA = kcu.TABLE_SCHEMA "
+            f" AND tc.TABLE_NAME = kcu.TABLE_NAME "
+            f"WHERE tc.CONSTRAINT_TYPE = 'PRIMARY KEY' "
+            f"  AND tc.TABLE_NAME = :table_name"
+        )
+        params: dict[str, Any] = {"table_name": table_name}
+        if eff_schema is not None:
+            stmt += " AND tc.TABLE_SCHEMA = :schema"
+            params["schema"] = eff_schema
+        stmt += " ORDER BY kcu.ORDINAL_POSITION"
+
+        try:
+            rows = connection.execute(text(stmt), params).all()
+        except Exception:
+            return {"constrained_columns": [], "name": None}
+
+        if not rows:
+            return {"constrained_columns": [], "name": None}
+
+        constrained_columns = [r[0] for r in rows]
+        name = rows[0][1]
+        return {"constrained_columns": constrained_columns, "name": name}
 
     def get_columns(
         self,

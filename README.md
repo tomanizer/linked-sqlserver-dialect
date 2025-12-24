@@ -49,7 +49,7 @@ dialect gets registered.
 Or via `connect_args`:
 
 ```python
-engine = create_engine(
+engine = create_engine(/.
     "linked_mssql+pyodbc://user:pass@host/db?driver=ODBC+Driver+17+for+SQL+Server",
     connect_args={"linked_server": "MyLinkedServer", "database": "RemoteDb", "schema": "dbo"},
 )
