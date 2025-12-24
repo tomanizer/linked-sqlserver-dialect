@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.0 (2025-12-24)
+
+### Added
+- View reflection:
+  - `get_view_names()`
+  - `get_view_definition()` (best-effort)
+- Primary key handling:
+  - `get_pk_constraint()` (best-effort via INFORMATION_SCHEMA)
+  - `pk_overrides` to supply PKs when metadata is missing (URL query param or `connect_args`)
+- Local devcontainer + Docker Compose sandbox for manual testing (linked server + seeded schema).
+
 ## 0.1.0 (2025-12-24)
 
 Initial release.

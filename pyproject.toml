@@ -1,10 +1,11 @@
 [project]
 name = "linked-sqlserver-dialect"
-version = "0.1.0"
+version = "0.2.0"
 description = "SQLAlchemy dialect for SQL Server linked servers (reflection via INFORMATION_SCHEMA)"
 readme = "README.md"
 requires-python = ">=3.12"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
   { name = "Thomas" },
 ]
@@ -12,7 +13,6 @@ keywords = ["sqlalchemy", "sqlserver", "mssql", "linked-server", "pyodbc", "dial
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.12",
   "Topic :: Database",
@@ -22,9 +22,16 @@ dependencies = [
   "pyodbc",
 ]
 
+[project.urls]
+Homepage = "https://github.com/tomanizer/linked-sqlserver-dialect"
+Repository = "https://github.com/tomanizer/linked-sqlserver-dialect"
+Issues = "https://github.com/tomanizer/linked-sqlserver-dialect/issues"
+
 [project.optional-dependencies]
 dev = [
   "pytest>=8.0",
+  "build>=1.2.0",
+  "twine>=5.0.0",
 ]
 
 [project.entry-points."sqlalchemy.dialects"]
